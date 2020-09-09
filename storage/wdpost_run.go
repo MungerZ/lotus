@@ -3,7 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
-	"errors"
+	"math"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -27,8 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var errNoPartitions = errors.New("no partitions")
-
 func (s *WindowPoStScheduler) failPost(deadline *dline.Info) {
 	log.Errorf("TODO")
 	/*s.failLk.Lock()
@@ -50,20 +48,17 @@ func (s *WindowPoStScheduler) doPost(ctx context.Context, deadline *dline.Info, 
 		ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.doPost")
 		defer span.End()
 
-		proof, err := s.runPost(ctx, *deadline, ts)
-		switch err {
-		case errNoPartitions:
-			return
-		case nil:
-			if err := s.submitPost(ctx, proof); err != nil {
-				log.Errorf("submitPost failed: %+v", err)
-				s.failPost(deadline)
-				return
-			}
-		default:
+		posts, err := s.runPost(ctx, *deadline, ts)
+		if err != nil {
 			log.Errorf("runPost failed: %+v", err)
 			s.failPost(deadline)
-			return
+		}
+
+		for i := range posts {
+			if err := s.submitPost(ctx, &posts[i]); err != nil {
+				log.Errorf("submitPost failed: %+v", err)
+				s.failPost(deadline)
+			}
 		}
 	}()
 }
@@ -288,7 +283,7 @@ func (s *WindowPoStScheduler) checkNextFaults(ctx context.Context, dlIdx uint64,
 	return nil
 }
 
-func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *types.TipSet) (*miner.SubmitWindowedPoStParams, error) {
+func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -326,116 +321,167 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
 
-	partitions, err := s.api.StateMinerPartitions(ctx, s.actor, di.Index, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("getting partitions: %w", err)
-	}
-
-	params := &miner.SubmitWindowedPoStParams{
-		Deadline:   di.Index,
-		Partitions: make([]miner.PoStPartition, 0, len(partitions)),
-		Proofs:     nil,
-	}
-
-	var sinfos []proof.SectorInfo
-	sidToPart := map[abi.SectorNumber]uint64{}
-	skipCount := uint64(0)
-
-	for partIdx, partition := range partitions {
-		// TODO: Can do this in parallel
-		toProve, err := partition.ActiveSectors()
-		if err != nil {
-			return nil, xerrors.Errorf("getting active sectors: %w", err)
-		}
-
-		toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
-		if err != nil {
-			return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
-		}
-
-		good, err := s.checkSectors(ctx, toProve)
-		if err != nil {
-			return nil, xerrors.Errorf("checking sectors to skip: %w", err)
-		}
-
-		skipped, err := bitfield.SubtractBitField(toProve, good)
-		if err != nil {
-			return nil, xerrors.Errorf("toProve - good: %w", err)
-		}
-
-		sc, err := skipped.Count()
-		if err != nil {
-			return nil, xerrors.Errorf("getting skipped sector count: %w", err)
-		}
-
-		skipCount += sc
-
-		ssi, err := s.sectorsForProof(ctx, good, partition.Sectors, ts)
-		if err != nil {
-			return nil, xerrors.Errorf("getting sorted sector info: %w", err)
-		}
-
-		if len(ssi) == 0 {
-			continue
-		}
-
-		sinfos = append(sinfos, ssi...)
-		for _, si := range ssi {
-			sidToPart[si.SectorNumber] = uint64(partIdx)
-		}
-
-		params.Partitions = append(params.Partitions, miner.PoStPartition{
-			Index:   uint64(partIdx),
-			Skipped: skipped,
-		})
-	}
-
-	if len(sinfos) == 0 {
-		// nothing to prove..
-		return nil, errNoPartitions
-	}
-
-	log.Infow("running windowPost",
-		"chain-random", rand,
-		"deadline", di,
-		"height", ts.Height(),
-		"skipped", skipCount)
-
-	tsStart := build.Clock.Now()
-
-	mid, err := address.IDFromAddress(s.actor)
-	if err != nil {
-		return nil, err
-	}
-
-	postOut, postSkipped, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
-	if err != nil {
-		return nil, xerrors.Errorf("running post failed: %w", err)
-	}
-
-	if len(postOut) == 0 {
-		return nil, xerrors.Errorf("received proofs back from generate window post")
-	}
-
-	params.Proofs = postOut
-
-	for _, sector := range postSkipped {
-		params.Partitions[sidToPart[sector.Number]].Skipped.Set(uint64(sector.Number))
-	}
-
-	elapsed := time.Since(tsStart)
-
 	commEpoch := di.Open
 	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
-	params.ChainCommitEpoch = commEpoch
-	params.ChainCommitRand = commRand
 
-	log.Infow("submitting window PoSt", "elapsed", elapsed)
+	// Get the partitions for the given deadline
+	partitions, err := s.api.StateMinerPartitions(ctx, s.actor, di.Index, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("getting partitions: %w", err)
+	}
 
-	return params, nil
+	// Split partitions into batches, so as not to exceed the number of sectors
+	// allowed in a single message
+	partitionBatches, err := s.batchPartitions(partitions)
+	if err != nil {
+		return nil, err
+	}
+
+	partitionIdx := 0
+	posts := make([]miner.SubmitWindowedPoStParams, 0, len(partitionBatches))
+	for batchIdx, batch := range partitionBatches {
+		params := miner.SubmitWindowedPoStParams{
+			Deadline:         di.Index,
+			Partitions:       make([]miner.PoStPartition, 0, len(batch)),
+			Proofs:           nil,
+			ChainCommitEpoch: commEpoch,
+			ChainCommitRand:  commRand,
+		}
+
+		var sinfos []proof.SectorInfo
+		sidToPart := map[abi.SectorNumber]uint64{}
+		skipCount := uint64(0)
+
+		for _, partition := range batch {
+			// TODO: Can do this in parallel
+			toProve, err := partition.ActiveSectors()
+			if err != nil {
+				return nil, xerrors.Errorf("getting active sectors: %w", err)
+			}
+
+			toProve, err = bitfield.MergeBitFields(toProve, partition.Recoveries)
+			if err != nil {
+				return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
+			}
+
+			good, err := s.checkSectors(ctx, toProve)
+			if err != nil {
+				return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+			}
+
+			skipped, err := bitfield.SubtractBitField(toProve, good)
+			if err != nil {
+				return nil, xerrors.Errorf("toProve - good: %w", err)
+			}
+
+			sc, err := skipped.Count()
+			if err != nil {
+				return nil, xerrors.Errorf("getting skipped sector count: %w", err)
+			}
+
+			skipCount += sc
+
+			ssi, err := s.sectorsForProof(ctx, good, partition.Sectors, ts)
+			if err != nil {
+				return nil, xerrors.Errorf("getting sorted sector info: %w", err)
+			}
+
+			if len(ssi) == 0 {
+				continue
+			}
+
+			sinfos = append(sinfos, ssi...)
+			for _, si := range ssi {
+				sidToPart[si.SectorNumber] = uint64(partitionIdx)
+			}
+
+			params.Partitions = append(params.Partitions, miner.PoStPartition{
+				Index:   uint64(partitionIdx),
+				Skipped: skipped,
+			})
+
+			partitionIdx++
+		}
+
+		if len(sinfos) == 0 {
+			// nothing to prove..
+			continue
+		}
+
+		log.Infow("running windowPost",
+			"chain-random", rand,
+			"deadline", di,
+			"height", ts.Height(),
+			"skipped", skipCount)
+
+		tsStart := build.Clock.Now()
+
+		mid, err := address.IDFromAddress(s.actor)
+		if err != nil {
+			return nil, err
+		}
+
+		postOut, postSkipped, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), sinfos, abi.PoStRandomness(rand))
+		if err != nil {
+			return nil, xerrors.Errorf("running post failed: %w", err)
+		}
+
+		if len(postOut) == 0 {
+			return nil, xerrors.Errorf("received proofs back from generate window post")
+		}
+
+		params.Proofs = postOut
+
+		for _, sector := range postSkipped {
+			params.Partitions[sidToPart[sector.Number]].Skipped.Set(uint64(sector.Number))
+		}
+
+		elapsed := time.Since(tsStart)
+		log.Infow("submitting window PoSt", "batch", batchIdx, "elapsed", elapsed)
+
+		posts = append(posts, params)
+	}
+
+	return posts, nil
+}
+
+func (s *WindowPoStScheduler) batchPartitions(partitions []*miner.Partition) ([][]*miner.Partition, error) {
+	// Get the number of sectors allowed in a partition, for this proof size
+	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(s.proofType)
+	if err != nil {
+		return nil, xerrors.Errorf("getting sectors per partition: %w", err)
+	}
+
+	// We don't want to exceed the number of sectors allowed in a message.
+	// So given the number of sectors in a partition, work out the number of
+	// partitions that can be in a message without exceeding sectors per
+	// message:
+	// floor(number of sectors allowed in a message / sectors per partition)
+	// eg:
+	// max sectors per message  7:  ooooooo
+	// sectors per partition    3:  ooo
+	// partitions per message   2:  oooOOO
+	//                              <1><2> (3rd doesn't fit)
+	partitionsPerMsg := int(miner.AddressedSectorsMax / sectorsPerPartition)
+
+	// The number of messages will be:
+	// ceiling(number of partitions / partitions per message)
+	batchCount := uint64(math.Ceil(float64(len(partitions)) / float64(partitionsPerMsg)))
+
+	// Split the partitions into batches
+	batches := make([][]*miner.Partition, 0, batchCount)
+	for i := 0; i < len(partitions); {
+		batch := make([]*miner.Partition, 0, partitionsPerMsg)
+		for j := 0; j < partitionsPerMsg && i < len(partitions); j++ {
+			batch = append(batch, partitions[i])
+			i++
+		}
+		batches = append(batches, batch)
+	}
+	return batches, nil
 }
 
 func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof.SectorInfo, error) {
