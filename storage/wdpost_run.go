@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"context"
-	"math"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/dline"
@@ -321,12 +320,6 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 	}
 
-	commEpoch := di.Open
-	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
-	}
-
 	// Get the partitions for the given deadline
 	partitions, err := s.api.StateMinerPartitions(ctx, s.actor, di.Index, ts.Key())
 	if err != nil {
@@ -344,11 +337,9 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 	posts := make([]miner.SubmitWindowedPoStParams, 0, len(partitionBatches))
 	for batchIdx, batch := range partitionBatches {
 		params := miner.SubmitWindowedPoStParams{
-			Deadline:         di.Index,
-			Partitions:       make([]miner.PoStPartition, 0, len(batch)),
-			Proofs:           nil,
-			ChainCommitEpoch: commEpoch,
-			ChainCommitRand:  commRand,
+			Deadline:   di.Index,
+			Partitions: make([]miner.PoStPartition, 0, len(batch)),
+			Proofs:     nil,
 		}
 
 		var sinfos []proof.SectorInfo
@@ -445,6 +436,19 @@ func (s *WindowPoStScheduler) runPost(ctx context.Context, di dline.Info, ts *ty
 		posts = append(posts, params)
 	}
 
+	// Compute randomness after generating proofs so as to reduce the impact
+	// of chain reorgs (which change randomness)
+	commEpoch := di.Open
+	commRand, err := s.api.ChainGetRandomnessFromTickets(ctx, ts.Key(), crypto.DomainSeparationTag_PoStChainCommit, commEpoch, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness for windowPost (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+
+	for i := range posts {
+		posts[i].ChainCommitEpoch = commEpoch
+		posts[i].ChainCommitRand = commRand
+	}
+
 	return posts, nil
 }
 
@@ -469,17 +473,19 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []*miner.Partition) ([]
 
 	// The number of messages will be:
 	// ceiling(number of partitions / partitions per message)
-	batchCount := uint64(math.Ceil(float64(len(partitions)) / float64(partitionsPerMsg)))
+	batchCount := len(partitions) / partitionsPerMsg
+	if len(partitions)%partitionsPerMsg != 0 {
+		batchCount++
+	}
 
 	// Split the partitions into batches
 	batches := make([][]*miner.Partition, 0, batchCount)
-	for i := 0; i < len(partitions); {
-		batch := make([]*miner.Partition, 0, partitionsPerMsg)
-		for j := 0; j < partitionsPerMsg && i < len(partitions); j++ {
-			batch = append(batch, partitions[i])
-			i++
+	for i := 0; i < len(partitions); i += partitionsPerMsg {
+		end := i + partitionsPerMsg
+		if end > len(partitions) {
+			end = len(partitions)
 		}
-		batches = append(batches, batch)
+		batches = append(batches, partitions[i:end])
 	}
 	return batches, nil
 }

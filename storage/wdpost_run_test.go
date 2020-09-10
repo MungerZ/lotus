@@ -19,6 +19,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
+	"github.com/filecoin-project/go-state-types/dline"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
@@ -154,7 +156,7 @@ func TestWDPostDoPost(t *testing.T) {
 		worker:       workerAct,
 	}
 
-	di := &miner.DeadlineInfo{}
+	di := &dline.Info{}
 	ts := mockTipSet(t)
 	scheduler.doPost(ctx, di, ts)
 
@@ -218,7 +220,7 @@ func (m *mockStorageMinerAPI) StateSectorPartition(ctx context.Context, maddr ad
 	panic("implement me")
 }
 
-func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, address address.Address, key types.TipSetKey) (*miner.DeadlineInfo, error) {
+func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, address address.Address, key types.TipSetKey) (*dline.Info, error) {
 	panic("implement me")
 }
 
