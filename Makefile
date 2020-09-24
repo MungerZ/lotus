@@ -107,7 +107,7 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 install: install-daemon install-miner install-worker
 
 install-daemon:
-	install -C ./lotus /usr/local/bin/lotus
+	install -C ./lotus $GOBIN/lotus
 
 install-miner:
 	install -C ./lotus-miner /usr/local/bin/lotus-miner
@@ -191,8 +191,8 @@ testground:
 .PHONY: testground
 BINS+=testground
 
-install-chainwatch: lotus-chainwatch
-	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
+install-chainwatch:
+	install -C ./lotus-chainwatch $GOBIN/lotus-chainwatch
 
 # SYSTEMD
 
