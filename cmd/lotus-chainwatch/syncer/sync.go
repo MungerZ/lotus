@@ -120,6 +120,7 @@ create table if not exists blocks
 			primary key
 	    constraint blocks_block_cids_cid_fk
 			references block_cids (cid),
+	size_bytes bigint not null,
 	parentWeight numeric not null,
 	parentStateRoot text not null,
 	height bigint not null,
@@ -129,6 +130,7 @@ create table if not exists blocks
 	election_proof bytea,
 	win_count bigint,
 	parent_base_fee text not null,
+	signature bytea not null,
 	forksig bigint not null
 );
 
@@ -479,7 +481,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, forksig) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, size_bytes, parentWeight, parentStateRoot, height, miner, "timestamp", ticket, election_proof, win_count, parent_base_fee, signature, forksig) from stdin`)
 	if err != nil {
 		return err
 	}
@@ -499,8 +501,19 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			}
 		}
 
+		var bhBytes int
+		if b, err := bh.Serialize(); err == nil {
+			bhBytes = len(b)
+		}
+
+		var signature interface{}
+		if bh.BlockSig != nil {
+			signature, _ = bh.BlockSig.MarshalBinary()
+		}
+
 		if _, err := stmt2.Exec(
 			bh.Cid().String(),
+			bhBytes,
 			bh.ParentWeight.String(),
 			bh.ParentStateRoot.String(),
 			bh.Height,
@@ -510,6 +523,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 			eproof,
 			winCount,
 			bh.ParentBaseFee.String(),
+			signature,
 			bh.ForkSignaling); err != nil {
 			log.Error(err)
 		}
