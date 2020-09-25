@@ -25,6 +25,7 @@ create table if not exists messages
 	cid text not null
 		constraint messages_pk
 			primary key,
+	version bigint not null,
 	"from" text not null,
 	"to" text not null,
 	size_bytes bigint not null,
@@ -208,7 +209,7 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy msgs (cid, "from", "to", size_bytes, nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
+	stmt, err := tx.Prepare(`copy msgs (cid, version, "from", "to", size_bytes, nonce, "value", gas_premium, gas_fee_cap, gas_limit, method, params) from stdin `)
 	if err != nil {
 		return err
 	}
@@ -221,6 +222,7 @@ create temp table msgs (like messages excluding constraints) on commit drop;
 
 		if _, err := stmt.Exec(
 			c.String(),
+			m.Version,
 			m.From.String(),
 			m.To.String(),
 			msgBytes,
