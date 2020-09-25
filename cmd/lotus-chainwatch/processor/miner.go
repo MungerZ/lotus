@@ -106,27 +106,27 @@ create table if not exists miner_power
 		primary key (miner_id, state_root)
 );
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'miner_sector_event_type') THEN
-        CREATE TYPE miner_sector_event_type AS ENUM
-        (
-            'PRECOMMIT_ADDED', 'PRECOMMIT_EXPIRED', 'COMMIT_CAPACITY_ADDED', 'SECTOR_ADDED',
-            'SECTOR_EXTENDED', 'SECTOR_EXPIRED', 'SECTOR_FAULTED', 'SECTOR_RECOVERING', 'SECTOR_RECOVERED', 'SECTOR_TERMINATED'
-        );
-    END IF;
-END$$;
+-- DO $$
+-- BEGIN
+--     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'miner_sector_event_type') THEN
+--         CREATE TYPE miner_sector_event_type AS ENUM
+--         (
+--             'PRECOMMIT_ADDED', 'PRECOMMIT_EXPIRED', 'COMMIT_CAPACITY_ADDED', 'SECTOR_ADDED',
+--             'SECTOR_EXTENDED', 'SECTOR_EXPIRED', 'SECTOR_FAULTED', 'SECTOR_RECOVERING', 'SECTOR_RECOVERED', 'SECTOR_TERMINATED'
+--         );
+--     END IF;
+-- END$$;
 
-create table if not exists miner_sector_events
-(
-    miner_id text not null,
-    sector_id bigint not null,
-    state_root text not null,
-    event miner_sector_event_type not null,
-    
-	constraint miner_sector_events_pk
-		primary key (sector_id, event, miner_id, state_root)
-);
+-- create table if not exists miner_sector_events
+-- (
+--     miner_id text not null,
+--     sector_id bigint not null,
+--     state_root text not null,
+--     event miner_sector_event_type not null,
+--     
+-- 	constraint miner_sector_events_pk
+-- 		primary key (sector_id, event, miner_id, state_root)
+-- );
 
 `); err != nil {
 		return err
@@ -267,16 +267,16 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	// 8 is arbitrary, idk what a good value here is.
 	preCommitEvents := make(chan *MinerSectorsEvent, 8)
 	sectorEvents := make(chan *MinerSectorsEvent, 8)
-	partitionEvents := make(chan *MinerSectorsEvent, 8)
+	//partitionEvents := make(chan *MinerSectorsEvent, 8)
 	dealEvents := make(chan *SectorDealEvent, 8)
 
 	//grp.Go(func() error {
 	//	return p.storePreCommitDealInfo(dealEvents)
 	//})
 
-	grp.Go(func() error {
-		return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
-	})
+	//grp.Go(func() error {
+	//	return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
+	//})
 
 	grp.Go(func() error {
 		defer func() {
@@ -291,10 +291,10 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 		return p.storeMinerSectorInfo(ctx, miners, sectorEvents)
 	})
 
-	grp.Go(func() error {
-		defer close(partitionEvents)
-		return p.getMinerPartitionsDifferences(ctx, miners, partitionEvents)
-	})
+	//grp.Go(func() error {
+	//	defer close(partitionEvents)
+	//	return p.getMinerPartitionsDifferences(ctx, miners, partitionEvents)
+	//})
 
 	return grp.Wait()
 }
