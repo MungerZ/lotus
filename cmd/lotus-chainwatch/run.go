@@ -40,7 +40,7 @@ var runCmd = &cli.Command{
 		if err := logging.SetLogLevel("*", ll); err != nil {
 			return err
 		}
-		if err := logging.SetLogLevel("rpc", "error"); err != nil {
+		if err := logging.SetLogLevel("rpc", "debug"); err != nil {
 			return err
 		}
 
