@@ -270,9 +270,9 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	partitionEvents := make(chan *MinerSectorsEvent, 8)
 	dealEvents := make(chan *SectorDealEvent, 8)
 
-	grp.Go(func() error {
-		return p.storePreCommitDealInfo(dealEvents)
-	})
+	//grp.Go(func() error {
+	//	return p.storePreCommitDealInfo(dealEvents)
+	//})
 
 	grp.Go(func() error {
 		return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
