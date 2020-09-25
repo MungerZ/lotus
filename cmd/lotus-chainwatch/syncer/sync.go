@@ -91,27 +91,27 @@ create table if not exists block_parents
 create unique index if not exists block_parents_block_parent_uindex
 	on block_parents (block, parent);
 
-create table if not exists drand_entries
-(
-    round bigint not null
-    	constraint drand_entries_pk
-			primary key,
-	data bytea not null
-);
-create unique index if not exists drand_entries_round_uindex
-	on drand_entries (round);
+-- create table if not exists drand_entries
+-- (
+--     round bigint not null
+--     	constraint drand_entries_pk
+-- 			primary key,
+-- 	data bytea not null
+-- );
+-- create unique index if not exists drand_entries_round_uindex
+-- 	on drand_entries (round);
 
-create table if not exists block_drand_entries
-(
-    round bigint not null
-    	constraint block_drand_entries_drand_entries_round_fk
-			references drand_entries (round),
-	block text not null
-	    constraint blocks_block_cids_cid_fk
-			references block_cids (cid)
-);
-create unique index if not exists block_drand_entries_round_uindex
-	on block_drand_entries (round, block);
+-- create table if not exists block_drand_entries
+-- (
+--     round bigint not null
+--     	constraint block_drand_entries_drand_entries_round_fk
+-- 			references drand_entries (round),
+-- 	block text not null
+-- 	    constraint blocks_block_cids_cid_fk
+-- 			references block_cids (cid)
+-- );
+-- create unique index if not exists block_drand_entries_round_uindex
+-- 	on block_drand_entries (round, block);
 
 create table if not exists blocks
 (
@@ -356,8 +356,8 @@ func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, tim
 	if _, err := tx.Exec(`
 
 create temp table bc (like block_cids excluding constraints) on commit drop;
-create temp table de (like drand_entries excluding constraints) on commit drop;
-create temp table bde (like block_drand_entries excluding constraints) on commit drop;
+-- create temp table de (like drand_entries excluding constraints) on commit drop;
+-- create temp table bde (like block_drand_entries excluding constraints) on commit drop;
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
@@ -388,51 +388,51 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	{
-		stmt, err := tx.Prepare(`copy de (round, data) from STDIN`)
-		if err != nil {
-			return err
-		}
+	//{
+	//	stmt, err := tx.Prepare(`copy de (round, data) from STDIN`)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	for _, bh := range bhs {
+	//		for _, ent := range bh.BeaconEntries {
+	//			if _, err := stmt.Exec(ent.Round, ent.Data); err != nil {
+	//				log.Error(err)
+	//			}
+	//		}
+	//	}
+	//
+	//	if err := stmt.Close(); err != nil {
+	//		return err
+	//	}
+	//
+	//	if _, err := tx.Exec(`insert into drand_entries select * from de on conflict do nothing `); err != nil {
+	//		return xerrors.Errorf("drand entries put: %w", err)
+	//	}
+	//}
 
-		for _, bh := range bhs {
-			for _, ent := range bh.BeaconEntries {
-				if _, err := stmt.Exec(ent.Round, ent.Data); err != nil {
-					log.Error(err)
-				}
-			}
-		}
-
-		if err := stmt.Close(); err != nil {
-			return err
-		}
-
-		if _, err := tx.Exec(`insert into drand_entries select * from de on conflict do nothing `); err != nil {
-			return xerrors.Errorf("drand entries put: %w", err)
-		}
-	}
-
-	{
-		stmt, err := tx.Prepare(`copy bde (round, block) from STDIN`)
-		if err != nil {
-			return err
-		}
-
-		for _, bh := range bhs {
-			for _, ent := range bh.BeaconEntries {
-				if _, err := stmt.Exec(ent.Round, bh.Cid().String()); err != nil {
-					log.Error(err)
-				}
-			}
-		}
-
-		if err := stmt.Close(); err != nil {
-			return err
-		}
-
-		if _, err := tx.Exec(`insert into block_drand_entries select * from bde on conflict do nothing `); err != nil {
-			return xerrors.Errorf("block drand entries put: %w", err)
-		}
-	}
+	//{
+	//	stmt, err := tx.Prepare(`copy bde (round, block) from STDIN`)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	for _, bh := range bhs {
+	//		for _, ent := range bh.BeaconEntries {
+	//			if _, err := stmt.Exec(ent.Round, bh.Cid().String()); err != nil {
+	//				log.Error(err)
+	//			}
+	//		}
+	//	}
+	//
+	//	if err := stmt.Close(); err != nil {
+	//		return err
+	//	}
+	//
+	//	if _, err := tx.Exec(`insert into block_drand_entries select * from bde on conflict do nothing `); err != nil {
+	//		return xerrors.Errorf("block drand entries put: %w", err)
+	//	}
+	//}
 
 	{
 		stmt, err := tx.Prepare(`copy tbp (block, parent) from STDIN`)
