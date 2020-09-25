@@ -130,7 +130,7 @@ create table if not exists blocks
 	election_proof bytea,
 	win_count bigint,
 	parent_base_fee text not null,
-	signature bytea not null,
+	signature bytea,
 	forksig bigint not null
 );
 
