@@ -68,9 +68,9 @@ func (p *Processor) setupSchemas() error {
 		return err
 	}
 
-	if err := p.setupMarket(); err != nil {
-		return err
-	}
+	//if err := p.setupMarket(); err != nil {
+	//	return err
+	//}
 
 	if err := p.setupRewards(); err != nil {
 		return err
@@ -142,14 +142,14 @@ func (p *Processor) Start(ctx context.Context) {
 
 				grp := sync.WaitGroup{}
 
-				grp.Add(1)
-				go func() {
-					defer grp.Done()
-					if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
-						log.Errorf("Failed to handle market changes: %w", err)
-						return
-					}
-				}()
+				//grp.Add(1)
+				//go func() {
+				//	defer grp.Done()
+				//	if err := p.HandleMarketChanges(ctx, actorChanges[builtin.StorageMarketActorCodeID]); err != nil {
+				//		log.Errorf("Failed to handle market changes: %w", err)
+				//		return
+				//	}
+				//}()
 
 				grp.Add(1)
 				go func() {
