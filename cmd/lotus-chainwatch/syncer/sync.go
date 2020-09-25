@@ -224,6 +224,11 @@ func (s *Syncer) Start(ctx context.Context) {
 }
 
 func (s *Syncer) unsyncedBlocks(ctx context.Context, head *types.TipSet, since uint64) (map[cid.Cid]*types.BlockHeader, error) {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Gathered unsynced blocks", "duration", time.Since(start).String())
+	}()
+
 	hasList, err := s.syncedBlocks(since, s.lookbackLimit)
 	if err != nil {
 		return nil, err
@@ -348,7 +353,12 @@ func (s *Syncer) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool, tim
 	if len(bhs) == 0 {
 		return nil
 	}
-	log.Debugw("Storing Headers", "count", len(bhs))
+	log.Debugw("Storing Headers", "count", len(bhs), "sync", sync)
+
+	start := time.Now()
+	defer func() {
+		log.Debugw("Stored Headers", "count", len(bhs), "duration", time.Since(start).String())
+	}()
 
 	tx, err := s.db.Begin()
 	if err != nil {
