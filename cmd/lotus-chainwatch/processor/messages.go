@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
@@ -92,6 +93,11 @@ create index if not exists receipts_msg_state_index
 }
 
 func (p *Processor) HandleMessageChanges(ctx context.Context, blocks map[cid.Cid]*types.BlockHeader) error {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Handled Message Changes", "duration", time.Since(start).String())
+	}()
+
 	if err := p.persistMessagesAndReceipts(ctx, blocks); err != nil {
 		return err
 	}

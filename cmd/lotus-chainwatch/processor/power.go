@@ -59,6 +59,11 @@ create table if not exists chain_power
 }
 
 func (p *Processor) HandlePowerChanges(ctx context.Context, powerTips ActorTips) error {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Handled Power Changes", "duration", time.Since(start).String())
+	}()
+
 	powerChanges, err := p.processPowerActors(ctx, powerTips)
 	if err != nil {
 		return xerrors.Errorf("Failed to process power actors: %w", err)
