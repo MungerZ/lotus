@@ -348,13 +348,13 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 
 			preCommitAdded := make([]uint64, len(changes.Added))
 			for i, added := range changes.Added {
-				if len(added.Info.DealIDs) > 0 {
-					sectorDeals <- &SectorDealEvent{
-						MinerID:  m.common.addr,
-						SectorID: uint64(added.Info.SectorNumber),
-						DealIDs:  added.Info.DealIDs,
-					}
-				}
+				//if len(added.Info.DealIDs) > 0 {
+				//	sectorDeals <- &SectorDealEvent{
+				//		MinerID:  m.common.addr,
+				//		SectorID: uint64(added.Info.SectorNumber),
+				//		DealIDs:  added.Info.DealIDs,
+				//	}
+				//}
 				if added.Info.ReplaceCapacity {
 					if _, err := stmt.Exec(
 						m.common.addr.String(),
@@ -397,33 +397,33 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 				}
 				preCommitAdded[i] = uint64(added.Info.SectorNumber)
 			}
-			if len(preCommitAdded) > 0 {
-				sectorEvents <- &MinerSectorsEvent{
-					MinerID:   m.common.addr,
-					StateRoot: m.common.stateroot,
-					SectorIDs: preCommitAdded,
-					Event:     PreCommitAdded,
-				}
-			}
-			var preCommitExpired []uint64
-			for _, removed := range changes.Removed {
-				// TODO: we can optimize this to not load the AMT every time, if necessary.
-				si, err := m.state.GetSector(removed.Info.SectorNumber)
-				if err != nil {
-					return err
-				}
-				if si == nil {
-					preCommitExpired = append(preCommitExpired, uint64(removed.Info.SectorNumber))
-				}
-			}
-			if len(preCommitExpired) > 0 {
-				sectorEvents <- &MinerSectorsEvent{
-					MinerID:   m.common.addr,
-					StateRoot: m.common.stateroot,
-					SectorIDs: preCommitExpired,
-					Event:     PreCommitExpired,
-				}
-			}
+			//if len(preCommitAdded) > 0 {
+			//	sectorEvents <- &MinerSectorsEvent{
+			//		MinerID:   m.common.addr,
+			//		StateRoot: m.common.stateroot,
+			//		SectorIDs: preCommitAdded,
+			//		Event:     PreCommitAdded,
+			//	}
+			//}
+			//var preCommitExpired []uint64
+			//for _, removed := range changes.Removed {
+			//	// TODO: we can optimize this to not load the AMT every time, if necessary.
+			//	si, err := m.state.GetSector(removed.Info.SectorNumber)
+			//	if err != nil {
+			//		return err
+			//	}
+			//	if si == nil {
+			//		preCommitExpired = append(preCommitExpired, uint64(removed.Info.SectorNumber))
+			//	}
+			//}
+			//if len(preCommitExpired) > 0 {
+			//	sectorEvents <- &MinerSectorsEvent{
+			//		MinerID:   m.common.addr,
+			//		StateRoot: m.common.stateroot,
+			//		SectorIDs: preCommitExpired,
+			//		Event:     PreCommitExpired,
+			//	}
+			//}
 			return nil
 		})
 	}
@@ -474,9 +474,9 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 			if changes == nil {
 				return nil
 			}
-			var sectorsAdded []uint64
-			var ccAdded []uint64
-			var extended []uint64
+			//var sectorsAdded []uint64
+			//var ccAdded []uint64
+			//var extended []uint64
 			for _, added := range changes.Added {
 				// add the sector to the table
 				if _, err := stmt.Exec(
@@ -494,35 +494,35 @@ func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActo
 				); err != nil {
 					log.Errorw("writing miner sector changes statement", "error", err.Error())
 				}
-				if len(added.DealIDs) == 0 {
-					ccAdded = append(ccAdded, uint64(added.SectorNumber))
-				} else {
-					sectorsAdded = append(sectorsAdded, uint64(added.SectorNumber))
-				}
+				//if len(added.DealIDs) == 0 {
+				//	ccAdded = append(ccAdded, uint64(added.SectorNumber))
+				//} else {
+				//	sectorsAdded = append(sectorsAdded, uint64(added.SectorNumber))
+				//}
 			}
 
-			for _, mod := range changes.Extended {
-				extended = append(extended, uint64(mod.To.SectorNumber))
-			}
+			//for _, mod := range changes.Extended {
+			//	extended = append(extended, uint64(mod.To.SectorNumber))
+			//}
 
-			events <- &MinerSectorsEvent{
-				MinerID:   m.common.addr,
-				StateRoot: m.common.stateroot,
-				SectorIDs: ccAdded,
-				Event:     CommitCapacityAdded,
-			}
-			events <- &MinerSectorsEvent{
-				MinerID:   m.common.addr,
-				StateRoot: m.common.stateroot,
-				SectorIDs: sectorsAdded,
-				Event:     SectorAdded,
-			}
-			events <- &MinerSectorsEvent{
-				MinerID:   m.common.addr,
-				StateRoot: m.common.stateroot,
-				SectorIDs: extended,
-				Event:     SectorExtended,
-			}
+			//events <- &MinerSectorsEvent{
+			//	MinerID:   m.common.addr,
+			//	StateRoot: m.common.stateroot,
+			//	SectorIDs: ccAdded,
+			//	Event:     CommitCapacityAdded,
+			//}
+			//events <- &MinerSectorsEvent{
+			//	MinerID:   m.common.addr,
+			//	StateRoot: m.common.stateroot,
+			//	SectorIDs: sectorsAdded,
+			//	Event:     SectorAdded,
+			//}
+			//events <- &MinerSectorsEvent{
+			//	MinerID:   m.common.addr,
+			//	StateRoot: m.common.stateroot,
+			//	SectorIDs: extended,
+			//	Event:     SectorExtended,
+			//}
 			return nil
 		})
 	}
