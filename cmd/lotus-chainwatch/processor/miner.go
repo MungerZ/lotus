@@ -187,10 +187,10 @@ type minerActorInfo struct {
 }
 
 func (p *Processor) HandleMinerChanges(ctx context.Context, minerTips ActorTips) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Handled Miner Changes", "duration", time.Since(start).String())
-	}()
+	//start := time.Now()
+	//defer func() {
+	//	log.Debugw("Handled Miner Changes", "duration", time.Since(start).String())
+	//}()
 
 	minerChanges, err := p.processMiners(ctx, minerTips)
 	if err != nil {
@@ -259,10 +259,10 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 }
 
 func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) error {
-	start := time.Now()
-	defer func() {
-		log.Debugw("Persisted Miners", "duration", time.Since(start).String())
-	}()
+	//start := time.Now()
+	//defer func() {
+	//	log.Debugw("Persisted Miners", "duration", time.Since(start).String())
+	//}()
 
 	grp, _ := errgroup.WithContext(ctx)
 
