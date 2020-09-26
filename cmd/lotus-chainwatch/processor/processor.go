@@ -415,6 +415,8 @@ func (p *Processor) unprocessedBlocks(ctx context.Context, batch int) (map[cid.C
 }
 
 func (p *Processor) markBlocksProcessed(ctx context.Context, processed map[cid.Cid]*types.BlockHeader) error {
+	log.Debugw("Marking blocks as Processed", "count", len(processed))
+
 	start := time.Now()
 	processedHeight := abi.ChainEpoch(0)
 	defer func() {
