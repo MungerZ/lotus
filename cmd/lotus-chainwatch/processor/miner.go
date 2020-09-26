@@ -47,54 +47,54 @@ create table if not exists miner_info
 		primary key (miner_id)
 );
 
-create table if not exists sector_precommit_info
-(
-    miner_id text not null,
-    sector_id bigint not null,
-    sealed_cid text not null,
-    state_root text not null,
-    
-    seal_rand_epoch bigint not null,
-    expiration_epoch bigint not null,
-    
-    precommit_deposit text not null,
-    precommit_epoch bigint not null,
-    deal_weight text not null,
-    verified_deal_weight text not null,
-    
-    
-    is_replace_capacity bool not null,
-    replace_sector_deadline bigint,
-    replace_sector_partition bigint,
-    replace_sector_number bigint,
-    
-    unique (miner_id, sector_id),
-    
-    constraint sector_precommit_info_pk
-		primary key (miner_id, sector_id, sealed_cid)
-    
-);
+-- create table if not exists sector_precommit_info
+-- (
+--     miner_id text not null,
+--     sector_id bigint not null,
+--     sealed_cid text not null,
+--     state_root text not null,
+--     
+--     seal_rand_epoch bigint not null,
+--     expiration_epoch bigint not null,
+--     
+--     precommit_deposit text not null,
+--     precommit_epoch bigint not null,
+--     deal_weight text not null,
+--     verified_deal_weight text not null,
+--     
+--     
+--     is_replace_capacity bool not null,
+--     replace_sector_deadline bigint,
+--     replace_sector_partition bigint,
+--     replace_sector_number bigint,
+--     
+--     unique (miner_id, sector_id),
+--     
+--     constraint sector_precommit_info_pk
+-- 		primary key (miner_id, sector_id, sealed_cid)
+--     
+-- );
 
-create table if not exists sector_info
-(
-    miner_id text not null,
-    sector_id bigint not null,
-    sealed_cid text not null,
-    state_root text not null,
-    
-    activation_epoch bigint not null,
-    expiration_epoch bigint not null,
-    
-    deal_weight text not null,
-    verified_deal_weight text not null,
-    
-    initial_pledge text not null,
-	expected_day_reward text not null,
-	expected_storage_pledge text not null,
-    
-    constraint sector_info_pk
-		primary key (miner_id, sector_id, sealed_cid)
-);
+-- create table if not exists sector_info
+-- (
+--     miner_id text not null,
+--     sector_id bigint not null,
+--     sealed_cid text not null,
+--     state_root text not null,
+--     
+--     activation_epoch bigint not null,
+--     expiration_epoch bigint not null,
+--     
+--     deal_weight text not null,
+--     verified_deal_weight text not null,
+--     
+--     initial_pledge text not null,
+-- 	expected_day_reward text not null,
+-- 	expected_storage_pledge text not null,
+--     
+--     constraint sector_info_pk
+-- 		primary key (miner_id, sector_id, sealed_cid)
+-- );
 
 /*
 * captures miner-specific power state for any given stateroot
@@ -281,10 +281,10 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	})
 
 	// 8 is arbitrary, idk what a good value here is.
-	preCommitEvents := make(chan *MinerSectorsEvent, 8)
-	sectorEvents := make(chan *MinerSectorsEvent, 8)
+	//preCommitEvents := make(chan *MinerSectorsEvent, 8)
+	//sectorEvents := make(chan *MinerSectorsEvent, 8)
 	//partitionEvents := make(chan *MinerSectorsEvent, 8)
-	dealEvents := make(chan *SectorDealEvent, 8)
+	//dealEvents := make(chan *SectorDealEvent, 8)
 
 	//grp.Go(func() error {
 	//	return p.storePreCommitDealInfo(dealEvents)
@@ -294,18 +294,18 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 	//	return p.storeMinerSectorEvents(ctx, sectorEvents, preCommitEvents, partitionEvents)
 	//})
 
-	grp.Go(func() error {
-		defer func() {
-			close(preCommitEvents)
-			close(dealEvents)
-		}()
-		return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents, dealEvents)
-	})
+	//grp.Go(func() error {
+	//	defer func() {
+	//		close(preCommitEvents)
+	//		close(dealEvents)
+	//	}()
+	//	return p.storeMinerPreCommitInfo(ctx, miners, preCommitEvents, dealEvents)
+	//})
 
-	grp.Go(func() error {
-		defer close(sectorEvents)
-		return p.storeMinerSectorInfo(ctx, miners, sectorEvents)
-	})
+	//grp.Go(func() error {
+	//	defer close(sectorEvents)
+	//	return p.storeMinerSectorInfo(ctx, miners, sectorEvents)
+	//})
 
 	//grp.Go(func() error {
 	//	defer close(partitionEvents)
