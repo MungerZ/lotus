@@ -73,7 +73,8 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version: %s", v.Version)
 
-		maxBatch := cctx.Int("max-batch")
+		//maxBatch := cctx.Int("max-batch")
+		maxBatch := 100
 
 		db, err := sql.Open("postgres", cctx.String("db"))
 		if err != nil {

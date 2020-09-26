@@ -214,7 +214,7 @@ func (p *Processor) processMiners(ctx context.Context, minerTips map[types.TipSe
 	var lk sync.Mutex
 	var out []minerActorInfo
 
-	parmap.Par(50, parmap.KVMapArr(minerTips), func(f func() (types.TipSetKey, []actorInfo)) {
+	parmap.Par(100, parmap.KVMapArr(minerTips), func(f func() (types.TipSetKey, []actorInfo)) {
 		tipset, miners := f()
 		// get the power actors claims map
 		powerState, err := getPowerActorState(ctx, p.node, tipset)
@@ -917,7 +917,7 @@ func (p *Processor) fetchMinersActorInfoStates(ctx context.Context, miners []min
 	var lk sync.Mutex
 	var out []minerInfo
 
-	parmap.Par(50, miners, func(m minerActorInfo) {
+	parmap.Par(100, miners, func(m minerActorInfo) {
 		mi, err := p.node.StateMinerInfo(ctx, m.common.addr, m.common.tsKey)
 		if err != nil {
 			//if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {

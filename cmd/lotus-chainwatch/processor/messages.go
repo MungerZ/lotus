@@ -259,7 +259,7 @@ func (p *Processor) fetchMessages(ctx context.Context, blocks map[cid.Cid]*types
 	messages := map[cid.Cid]*types.Message{}
 	inclusions := map[cid.Cid][]cid.Cid{} // block -> msgs
 
-	parmap.Par(50, parmap.MapArr(blocks), func(header *types.BlockHeader) {
+	parmap.Par(100, parmap.MapArr(blocks), func(header *types.BlockHeader) {
 		msgs, err := p.node.ChainGetBlockMessages(ctx, header.Cid())
 		if err != nil {
 			log.Error(err)
@@ -297,7 +297,7 @@ func (p *Processor) fetchParentReceipts(ctx context.Context, toSync map[cid.Cid]
 	var lk sync.Mutex
 	out := map[mrec]*types.MessageReceipt{}
 
-	parmap.Par(50, parmap.MapArr(toSync), func(header *types.BlockHeader) {
+	parmap.Par(100, parmap.MapArr(toSync), func(header *types.BlockHeader) {
 		recs, err := p.node.ChainGetParentReceipts(ctx, header.Cid())
 		if err != nil {
 			log.Error(err)

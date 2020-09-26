@@ -238,7 +238,7 @@ func (p *Processor) collectActorChanges(ctx context.Context, toProcess map[cid.C
 
 	// collect all actor state that has changes between block headers
 	paDone := 0
-	parmap.Par(50, parmap.MapArr(toProcess), func(bh *types.BlockHeader) {
+	parmap.Par(100, parmap.MapArr(toProcess), func(bh *types.BlockHeader) {
 		paDone++
 		if paDone%100 == 0 {
 			log.Debugw("Collecting actor changes", "done", paDone, "percent", (paDone*100)/len(toProcess))
@@ -370,7 +370,7 @@ func (p *Processor) fetchBlocks(ctx context.Context, bcs map[cid.Cid]struct{}) (
 	minBlock = abi.ChainEpoch(math.MaxInt64)
 	maxBlock = abi.ChainEpoch(0)
 
-	parmap.Par(50, parmap.KMapArr(bcs), func(ci cid.Cid) {
+	parmap.Par(100, parmap.KMapArr(bcs), func(ci cid.Cid) {
 		bh, err := p.node.ChainGetBlock(ctx, ci)
 		if err != nil {
 			// this is a pretty serious issue.
