@@ -316,6 +316,11 @@ func (p *Processor) persistMiners(ctx context.Context, miners []minerActorInfo) 
 }
 
 func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerActorInfo, sectorEvents chan<- *MinerSectorsEvent, sectorDeals chan<- *SectorDealEvent) error {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Stored Miner Pre Commit Info", "duration", time.Since(start).String())
+	}()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
@@ -346,8 +351,9 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 				return nil
 			}
 
-			preCommitAdded := make([]uint64, len(changes.Added))
-			for i, added := range changes.Added {
+			//preCommitAdded := make([]uint64, len(changes.Added))
+			//for i, added := range changes.Added {
+			for _, added := range changes.Added {
 				//if len(added.Info.DealIDs) > 0 {
 				//	sectorDeals <- &SectorDealEvent{
 				//		MinerID:  m.common.addr,
@@ -395,7 +401,7 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 					}
 
 				}
-				preCommitAdded[i] = uint64(added.Info.SectorNumber)
+				//preCommitAdded[i] = uint64(added.Info.SectorNumber)
 			}
 			//if len(preCommitAdded) > 0 {
 			//	sectorEvents <- &MinerSectorsEvent{
@@ -446,6 +452,11 @@ func (p *Processor) storeMinerPreCommitInfo(ctx context.Context, miners []minerA
 }
 
 func (p *Processor) storeMinerSectorInfo(ctx context.Context, miners []minerActorInfo, events chan<- *MinerSectorsEvent) error {
+	start := time.Now()
+	defer func() {
+		log.Debugw("Stored Miner Sector Info", "duration", time.Since(start).String())
+	}()
+
 	tx, err := p.db.Begin()
 	if err != nil {
 		return err
