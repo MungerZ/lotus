@@ -18,8 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/processor"
-	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/scheduler"
-	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/syncer"
 	"github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 )
 
@@ -91,14 +89,14 @@ var runCmd = &cli.Command{
 		}
 		db.SetMaxOpenConns(1350)
 
-		sync := syncer.NewSyncer(db, api, 1400)
-		sync.Start(ctx)
+		//sync := syncer.NewSyncer(db, api, 1400)
+		//sync.Start(ctx)
 
 		proc := processor.NewProcessor(ctx, db, api, maxBatch)
 		proc.Start(ctx)
 
-		sched := scheduler.PrepareScheduler(db)
-		sched.Start(ctx)
+		//sched := scheduler.PrepareScheduler(db)
+		//sched.Start(ctx)
 
 		<-ctx.Done()
 		os.Exit(0)
